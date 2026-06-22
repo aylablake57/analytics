@@ -14,7 +14,7 @@ const LAYERS = [
   { key: 'water',        label: 'Water Bodies',             count: '45 km²',color: '#06b6d4', active: false },
   { key: 'forest',       label: 'Forest',                   count: '220 km²',color:'#34d399', active: false },
   { key: 'adminOffices', label: 'Administrative Offices CDA', count: '—',   color: BOUNDARY_COLORS.adminOffices, active: true },
-  { key: 'ictZones',     label: 'ICT Zones',                count: '—',     color: BOUNDARY_COLORS.ictZones, active: false },
+  { key: 'ictZones',     label: 'ICT Zones',                count: '—',     color: BOUNDARY_COLORS.ictZones, active: true  },
 ];
 
 export default function HeroMap() {
@@ -241,18 +241,24 @@ export default function HeroMap() {
           if (typeof lat !== 'number' || typeof lng !== 'number') return;
           const props = f.properties ?? {};
           const name = String(props.Name ?? props.name ?? 'Administrative Office').trim();
+          const accent = BOUNDARY_COLORS.adminOffices;
           const rows = Object.entries(props)
             .filter(([k, v]) => !/^(name|id)$/i.test(k) && v != null && String(v).trim() !== '')
-            .map(([k, v]) => `<div style="display:flex;justify-content:space-between;gap:10px;font-size:0.7rem">
-              <span style="color:var(--text-3)">${k.replace(/_/g, ' ')}</span><span style="color:var(--text-1);font-weight:600">${v}</span>
+            .map(([k, v]) => `<div style="display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding:4px 0">
+              <span style="color:var(--text-3);font-size:11px;white-space:nowrap">${k.replace(/_/g, ' ')}</span>
+              <span style="color:var(--text-1);font-weight:600;font-size:11px;text-align:right">${v}</span>
             </div>`).join('');
           L.circleMarker([lat, lng], {
             radius: 8, color: '#ffffff', weight: 2,
-            fillColor: BOUNDARY_COLORS.adminOffices, fillOpacity: 0.95,
+            fillColor: accent, fillOpacity: 0.95,
           })
-            .bindPopup(`<div style="font-family:Inter,sans-serif;min-width:180px">
-              <div style="font-weight:700;color:var(--text-1);font-size:0.86rem;margin-bottom:4px">${name}</div>
-              ${rows || '<div style="font-size:0.7rem;color:var(--text-3)">CDA Administrative Office</div>'}
+            .bindPopup(`<div style="font-family:Inter,system-ui,sans-serif;min-width:200px;color:var(--text-1)">
+              <div style="display:flex;align-items:center;gap:9px;padding-bottom:9px;border-bottom:1px solid var(--border)">
+                <span style="width:11px;height:11px;border-radius:50%;background:${accent};box-shadow:0 0 10px ${accent};flex-shrink:0"></span>
+                <span style="font-weight:800;font-size:13.5px;letter-spacing:-0.01em;color:var(--text-1)">${name}</span>
+              </div>
+              <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:${accent};margin:9px 0 2px">CDA Administrative Office</div>
+              ${rows || '<div style="font-size:11px;color:var(--text-3);padding:3px 0">No additional details</div>'}
             </div>`)
             .addTo(group);
         });

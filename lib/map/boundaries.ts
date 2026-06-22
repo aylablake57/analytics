@@ -26,7 +26,10 @@ export type BoundaryKey =
   | 'waterbodies'
   | 'roads'
   | 'adminOffices'
-  | 'ictZones';
+  | 'ictZones'
+  | 'policeDivision'
+  | 'policeCircle'
+  | 'policeStation';
 
 // ── Canonical colors — import and use these everywhere; never inline ──────────
 export const BOUNDARY_COLORS = {
@@ -41,6 +44,11 @@ export const BOUNDARY_COLORS = {
   roads:        '#94A3B8',
   adminOffices: '#00F0FF',
   ictZones:     '#38BDF8',
+  // ICT Police jurisdiction boundaries (used by the /executive/itp dashboard,
+  // not the generic boundary dropdown). One color per hierarchy level.
+  policeDivision: '#2563EB',
+  policeCircle:   '#0EA5E9',
+  policeStation:  '#22D3EE',
 } as const satisfies Record<BoundaryKey, string>;
 
 // ── ICT Zones (CDA 1992 Zoning Regulation) — one distinct soft color per zone,
@@ -56,28 +64,56 @@ export const ZONE_COLORS: Record<string, string> = {
 
 export const zoneColor = (name: string): string => ZONE_COLORS[name] ?? '#94a3b8';
 
+// Map a qualitative risk word (High/Medium/Low/…) to a semantic color that
+// reads on both themes. Falls back to neutral for unknown values.
+function riskColor(v: string): string {
+  const s = v.toLowerCase();
+  if (/high|severe|very/.test(s)) return '#fb7185';   // danger
+  if (/mod|medium|mid/.test(s))   return '#fbbf24';   // warning
+  if (/low|min|safe|nil|no/.test(s)) return '#34d399'; // success
+  return 'var(--text-2)';
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function zonePopupHtml(p: Record<string, any>): string {
   const name = String(p.Zones ?? 'ICT Zone').trim();
   const color = zoneColor(name);
   const area = typeof p.AreaSqkm === 'number'
-    ? `${p.AreaSqkm.toLocaleString(undefined, { maximumFractionDigits: 1 })} km²`
+    ? `${p.AreaSqkm.toLocaleString(undefined, { maximumFractionDigits: 1 })}`
     : null;
-  const rows: [string, unknown][] = ([
-    ['Area', area],
-    ['Earthquake Risk', p.Earthquake],
-    ['Flood Risk', p.Flood],
-    ['Drought Risk', p.Drought],
-    ['District', p.District],
+  const district = p.District != null && String(p.District).trim() !== ''
+    ? String(p.District).trim() : null;
+
+  const risks: [string, unknown][] = ([
+    ['Earthquake', p.Earthquake],
+    ['Flood', p.Flood],
+    ['Drought', p.Drought],
   ] as [string, unknown][]).filter(([, v]) => v != null && v !== '');
-  const rowsHtml = rows.map(([k, v]) => `
-    <tr>
-      <td style="color:#64748b;padding:3px 10px 3px 0;white-space:nowrap;vertical-align:top;font-size:11px">${k}</td>
-      <td style="color:#0f172a;font-weight:600;padding:3px 0;font-size:11px">${v}</td>
-    </tr>`).join('');
-  return `<div style="font-family:system-ui,sans-serif;min-width:200px">
-    <div style="font-weight:800;font-size:13px;color:${color};margin-bottom:6px">${name}</div>
-    <table style="width:100%;border-collapse:collapse">${rowsHtml}</table>
+
+  const riskRows = risks.map(([k, v]) => {
+    const c = riskColor(String(v));
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:4px 0">
+      <span style="color:var(--text-3);font-size:11px">${k}</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:${c}">
+        <span style="width:6px;height:6px;border-radius:50%;background:${c}"></span>${v}
+      </span>
+    </div>`;
+  }).join('');
+
+  return `<div style="font-family:system-ui,sans-serif;min-width:218px;color:var(--text-1)">
+    <div style="display:flex;align-items:center;gap:9px;padding-bottom:9px;border-bottom:1px solid var(--border)">
+      <span style="width:11px;height:11px;border-radius:4px;background:${color};box-shadow:0 0 10px ${color};flex-shrink:0"></span>
+      <span style="font-weight:800;font-size:13.5px;letter-spacing:-0.01em;color:${color}">${name}</span>
+      ${district ? `<span style="margin-left:auto;font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.05em">${district}</span>` : ''}
+    </div>
+    ${area ? `<div style="display:flex;align-items:baseline;gap:5px;padding:11px 0 4px">
+      <span style="font-size:20px;font-weight:800;line-height:1;color:var(--text-1);font-variant-numeric:tabular-nums">${area}</span>
+      <span style="font-size:11px;color:var(--text-3);font-weight:600">km²</span>
+    </div>` : ''}
+    ${riskRows ? `<div style="margin-top:9px;padding-top:9px;border-top:1px solid var(--border)">
+      <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-3);margin-bottom:3px">Hazard Risk</div>
+      ${riskRows}
+    </div>` : ''}
   </div>`;
 }
 
@@ -402,6 +438,30 @@ export const TEHSIL_BOUNDARY_DEF: BoundaryDef = _reg({
   },
   labelProp: 'TEH_NAME',
 });
+
+// ── ICT Police jurisdiction boundaries — /executive/itp dashboard only ───────
+// All three files are EPSG:32643 (UTM 43N metres) MultiPolygons, so utm:true
+// drives the shared reprojection in loadBoundaryGeo. These are registered (so
+// loadBoundaryGeo(key, POLICE_BOUNDARY_DEFS) resolves + caches them) but kept
+// OUT of BOUNDARY_DEFS, so they never appear in the generic BoundaryDropdown.
+// The ITP view builds its own selectable/highlightable layers from the geo;
+// the style/color/popup here only satisfy the BoundaryDef interface.
+const policeDef = (
+  key: BoundaryKey, label: string, file: string,
+): BoundaryDef => _reg({
+  key, label, file, defaultOn: false, utm: true, swatch: {},
+  color: () => BOUNDARY_COLORS[key],
+  style: () => ({
+    color: BOUNDARY_COLORS[key], weight: 2, opacity: 0.9,
+    fill: true, fillColor: BOUNDARY_COLORS[key], fillOpacity: 0.08,
+  }),
+});
+
+export const POLICE_BOUNDARY_DEFS: BoundaryDef[] = [
+  policeDef('policeDivision', 'Police Divisions',   '/data/Police_zone_Division_Bdry.geojson'),
+  policeDef('policeCircle',   'SDPO Circles',       '/data/Police_Circles_SDPO.geojson'),
+  policeDef('policeStation',  'Police Stations',    '/data/Police_station_Bdry.geojson'),
+];
 
 export const BOUNDARY_DEFAULTS: Record<string, boolean> = Object.fromEntries(
   BOUNDARY_DEFS.map(d => [d.key, d.defaultOn]),

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   FaChartLine, FaMapMarkedAlt, FaLayerGroup, FaBolt, FaBell,
   FaFileAlt, FaCog, FaProjectDiagram, FaSearchLocation, FaUserSecret,
-  FaChevronLeft, FaLandmark, FaFire, FaVideo,
+  FaChevronLeft, FaLandmark, FaFire, FaVideo, FaShieldAlt,
 } from 'react-icons/fa';
 import ThemeToggle from './primitives/ThemeToggle';
 import { useTheme } from './primitives/ThemeProvider';
@@ -40,6 +40,7 @@ const NAV: NavSection[] = [
       { key: 'stateland',  label: 'State Land',     icon: <FaLandmark />,       href: '/executive/state_land' },
       { key: 'sngpl',      label: 'SNGPL',           icon: <FaFire />,           href: '/executive/sngpl' },
       { key: 'safecity',   label: 'Safe City',      icon: <FaVideo />,          href: '/executive/safe_city' },
+      { key: 'itp',        label: 'ITP',            icon: <FaShieldAlt />,      href: '/executive/itp' },
       { key: 'encroach',   label: 'Encroachments',  icon: <FaSearchLocation />, badge: '4.2K', badgeColor: '#fb923c' },
       { key: 'dealers',    label: 'Dealer Network', icon: <FaUserSecret />,     badge: '3',   badgeColor: '#fb7185' },
       { key: 'phases',     label: 'TP-18 Phases',   icon: <FaProjectDiagram /> },
