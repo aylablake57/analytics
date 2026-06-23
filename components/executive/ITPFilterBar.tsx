@@ -1,21 +1,18 @@
 'use client';
-import { LEVEL_META, LEVEL_ORDER, type CommandCategory, type ITPFilters, type PoliceLevel } from '@/lib/executive/itpUtils';
+import { type CommandCategory, type ITPFilters } from '@/lib/executive/itpUtils';
 
 interface Props {
   categories: CommandCategory[];
   value: ITPFilters;
   onChange: (f: ITPFilters) => void;
-  level: PoliceLevel;
-  onLevelChange: (l: PoliceLevel) => void;
 }
 
 /**
  * Filter strip (same chrome as the SafeCity / SNGPL selector strips): the
- * boundary-level switch (Division / Circle / Station) + dynamically generated
- * command-level pills. The pills are built from the data's categories, never
- * hard-coded.
+ * dynamically generated command-level pills. Boundary layers are toggled on
+ * the map itself (see ITPLayerToggle in ITPView).
  */
-export default function ITPFilterBar({ categories, value, onChange, level, onLevelChange }: Props) {
+export default function ITPFilterBar({ categories, value, onChange }: Props) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 6,
@@ -28,28 +25,6 @@ export default function ITPFilterBar({ categories, value, onChange, level, onLev
         fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.1em',
         textTransform: 'uppercase', color: 'var(--text-3)',
         fontFamily: 'var(--font-mono)', marginRight: 4, whiteSpace: 'nowrap',
-      }}>
-        Boundary:
-      </span>
-      <select
-        value={level}
-        onChange={e => onLevelChange(e.target.value as PoliceLevel)}
-        style={{
-          background: 'var(--bg-canvas)', border: '1px solid var(--border)',
-          borderRadius: 7, padding: '4px 8px', fontSize: '0.7rem', fontWeight: 600,
-          color: 'var(--text-1)', outline: 'none', fontFamily: 'inherit',
-          cursor: 'pointer', maxWidth: 200,
-        }}
-      >
-        {LEVEL_ORDER.map(l => (
-          <option key={l} value={l}>{LEVEL_META[l].plural}</option>
-        ))}
-      </select>
-
-      <span style={{
-        fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.1em',
-        textTransform: 'uppercase', color: 'var(--text-3)',
-        fontFamily: 'var(--font-mono)', margin: '0 4px 0 12px', whiteSpace: 'nowrap',
       }}>
         Command Level:
       </span>

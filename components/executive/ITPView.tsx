@@ -17,6 +17,21 @@ import {
   type ITPData, type ITPFilters, type PoliceLevel, type SelectedBoundary,
 } from '@/lib/executive/itpUtils';
 
+// Independently toggleable map layers — all on by default so the full police
+// hierarchy (divisions, circles, station boundaries) plus station points plot
+// together on load.
+type ITPLayerKey = PoliceLevel | 'stationPoints';
+const LAYER_ORDER: ITPLayerKey[] = ['division', 'circle', 'station', 'stationPoints'];
+const LAYER_META: Record<ITPLayerKey, { label: string; colorKey: 'policeDivision' | 'policeCircle' | 'policeStation' }> = {
+  division:      { label: 'Divisions',          colorKey: 'policeDivision' },
+  circle:        { label: 'SDPO Circles',       colorKey: 'policeCircle' },
+  station:       { label: 'Station Boundaries', colorKey: 'policeStation' },
+  stationPoints: { label: 'Station Points',     colorKey: 'policeStation' },
+};
+const DEFAULT_LAYERS: Record<ITPLayerKey, boolean> = {
+  division: true, circle: true, station: true, stationPoints: true,
+};
+
 export default function ITPView() {
   const { theme } = useTheme();
   const boundary = useBoundaryLayers();
@@ -26,7 +41,7 @@ export default function ITPView() {
   const mapInstRef     = useRef<any>(null);
   const dataCache      = useRef<ITPData | null>(null);
   const filtersRef     = useRef<ITPFilters>({ command: 'all' });
-  const levelRef       = useRef<PoliceLevel>('division');
+  const layersRef      = useRef<Record<ITPLayerKey, boolean>>(DEFAULT_LAYERS);
   const selectedRef    = useRef<SelectedBoundary | null>(null);
   const buildBoundsRef = useRef<(() => void) | null>(null);
   const buildMarkersRef= useRef<(() => void) | null>(null);
@@ -36,7 +51,7 @@ export default function ITPView() {
   // ── React state (drives the chrome: banner, KPIs, charts, panel) ───────────
   const [data,      setData]      = useState<ITPData | undefined>(undefined);
   const [filters,   setFilters]   = useState<ITPFilters>({ command: 'all' });
-  const [level,     setLevel]     = useState<PoliceLevel>('division');
+  const [layers,    setLayers]    = useState<Record<ITPLayerKey, boolean>>(DEFAULT_LAYERS);
   const [selected,  setSelected]  = useState<SelectedBoundary | null>(null);
   const [activeTab, setActiveTab] = useState<'map' | 'analytics'>('map');
 
@@ -52,11 +67,16 @@ export default function ITPView() {
     buildMarkersRef.current?.();
   };
 
-  const handleLevel = (l: PoliceLevel) => {
-    levelRef.current = l;
-    setLevel(l);
-    selectedRef.current = null;
-    setSelected(null);
+  const handleLayerToggle = (key: ITPLayerKey) => {
+    const next = { ...layersRef.current, [key]: !layersRef.current[key] };
+    layersRef.current = next;
+    setLayers(next);
+    // If the selected boundary's level was just hidden, clear the selection.
+    const sel = selectedRef.current;
+    if (sel && !next[sel.level]) {
+      selectedRef.current = null;
+      setSelected(null);
+    }
     buildBoundsRef.current?.();
     buildMarkersRef.current?.();
   };
@@ -99,8 +119,9 @@ export default function ITPView() {
     const bPane = map.createPane('itpBoundaryPane'); bPane.style.zIndex = '360';
     const mPane = map.createPane('itpMarkerPane');   mPane.style.zIndex = '500';
 
+    // Keyed `${level}:${name}` so the same name can't collide across levels.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const layerByName = new Map<string, any>();
+    const layerByKey = new Map<string, { layer: any; level: PoliceLevel }>();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let boundaryGroup: any = null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -109,17 +130,40 @@ export default function ITPView() {
     const catColor = (cmd: string) =>
       dataCache.current?.categories.find(c => c.key === cmd)?.color ?? '#64748b';
 
-    const styleFor = (kind: 'base' | 'selected' | 'dim') => {
-      const c = BOUNDARY_COLORS[LEVEL_META[levelRef.current].key];
-      if (kind === 'selected') return { color: c, weight: 3.5, opacity: 1, fill: true, fillColor: c, fillOpacity: 0.28 };
-      if (kind === 'dim')      return { color: c, weight: 1, opacity: 0.35, fill: true, fillColor: c, fillOpacity: 0.03 };
-      return { color: c, weight: 1.5, opacity: 0.85, fill: true, fillColor: c, fillOpacity: 0.08 };
+    // Per-level styling — distinct colors + weights so the nested hierarchy
+    // (division → circle → station) stays legible when stacked together.
+    const styleFor = (level: PoliceLevel, kind: 'base' | 'selected') => {
+      const c = BOUNDARY_COLORS[LEVEL_META[level].key];
+      if (kind === 'selected') return { color: c, weight: 4, opacity: 1, fill: true, fillColor: c, fillOpacity: 0.25 };
+      const weight = level === 'division' ? 2.6 : level === 'circle' ? 1.9 : 1.3;
+      return { color: c, weight, opacity: 0.9, fill: true, fillColor: c, fillOpacity: 0.05 };
     };
 
     const applyHighlight = () => {
       const sel = selectedRef.current;
-      layerByName.forEach((layer, name) => {
-        layer.setStyle(!sel ? styleFor('base') : name === sel.name ? styleFor('selected') : styleFor('dim'));
+      const selKey = sel ? `${sel.level}:${sel.name}` : null;
+      layerByKey.forEach((entry, key) => {
+        entry.layer.setStyle(styleFor(entry.level, key === selKey ? 'selected' : 'base'));
+      });
+    };
+
+    // Label pill is tinted with its layer's color (matches the legend/toggle
+    // swatches) so divisions, circles and stations are distinguishable at a
+    // glance. White text on the saturated fill stays legible on any basemap.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const labelMarker = (center: any, text: string, color: string, dy: number) => {
+      const w = Math.max(38, text.length * 6.5 + 14);
+      return L.marker(center, {
+        pane: 'itpBoundaryPane', interactive: false,
+        icon: L.divIcon({
+          className: '',
+          html: `<div style="display:inline-block;padding:2px 8px;border-radius:10px;
+            background:${color}E6;border:1px solid rgba(255,255,255,0.6);
+            font-family:system-ui,sans-serif;font-size:10px;font-weight:800;letter-spacing:.02em;
+            color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.45);
+            box-shadow:0 1px 4px rgba(0,0,0,0.30);pointer-events:none">${text}</div>`,
+          iconSize: [w, 16], iconAnchor: [w / 2, dy],
+        }),
       });
     };
 
@@ -149,54 +193,74 @@ export default function ITPView() {
         </div>
       </div>`;
 
+    // Builds every enabled boundary level (division → circle → station, stacked
+    // bottom-to-top) plus the station-points layer, from the current layer
+    // visibility. Re-run whenever a layer toggle flips.
     const buildBoundaries = () => {
       const dt = dataCache.current;
       if (!dt || !isCurrent()) return;
       if (boundaryGroup && map.hasLayer(boundaryGroup)) map.removeLayer(boundaryGroup);
-      layerByName.clear();
-      const lvl = levelRef.current;
-      const ld = dt.levels[lvl];
-      const nameProp = LEVEL_META[lvl].nameProp;
+      layerByKey.clear();
+      const vis = layersRef.current;
       const group = L.layerGroup();
 
-      L.geoJSON(ld.geojson, {
-        pane: 'itpBoundaryPane',
-        interactive: true,
-        style: () => styleFor('base'),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onEachFeature: (f: any, layer: any) => {
-          const nm = String(f.properties?.[nameProp] ?? '').trim();
-          layerByName.set(nm, layer);
-          layer.bindTooltip(nm, { sticky: true, opacity: 0.95 });
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          layer.on('click', (e: any) => {
-            L.DomEvent.stop(e);
-            selectFnRef.current?.({ level: lvl, name: nm, props: f.properties ?? {} });
-          });
-        },
-      }).addTo(group);
+      (['division', 'circle', 'station'] as PoliceLevel[]).forEach(lvl => {
+        if (!vis[lvl]) return;
+        const ld = dt.levels[lvl];
+        const nameProp = LEVEL_META[lvl].nameProp;
+        const color = BOUNDARY_COLORS[LEVEL_META[lvl].key];
 
-      // Centre labels (skip the 26 stations to avoid clutter)
-      if (lvl !== 'station') {
+        L.geoJSON(ld.geojson, {
+          pane: 'itpBoundaryPane',
+          interactive: true,
+          style: () => styleFor(lvl, 'base'),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onEachFeature: (f: any, layer: any) => {
+            const nm = String(f.properties?.[nameProp] ?? '').trim();
+            layerByKey.set(`${lvl}:${nm}`, { layer, level: lvl });
+            layer.bindTooltip(`${LEVEL_META[lvl].label}: ${nm}`, { sticky: true, opacity: 0.95 });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            layer.on('click', (e: any) => {
+              L.DomEvent.stop(e);
+              selectFnRef.current?.({ level: lvl, name: nm, props: f.properties ?? {} });
+            });
+          },
+        }).addTo(group);
+
+        // Divisions & circles get a centre name label; stations are named via
+        // their points layer (avoids two labels per station).
+        if (lvl !== 'station') {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (ld.geojson.features as any[]).forEach((f: any) => {
+            const nm = String(f.properties?.[nameProp] ?? '').trim();
+            if (!nm) return;
+            try {
+              const b = L.geoJSON(f).getBounds();
+              if (b.isValid()) group.addLayer(labelMarker(b.getCenter(), nm, color, 8));
+            } catch { /* skip malformed feature */ }
+          });
+        }
+      });
+
+      // Station points — orange dot at each station centroid + name label
+      if (vis.stationPoints) {
+        const color = BOUNDARY_COLORS.policeStation;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (ld.geojson.features as any[]).forEach((f: any) => {
-          const nm = String(f.properties?.[nameProp] ?? '').trim();
-          if (!nm) return;
+        (dt.levels.station.geojson.features as any[]).forEach((f: any) => {
+          const nm = String(f.properties?.Name ?? '').trim();
           try {
-            const b = L.geoJSON(f).getBounds();
-            if (!b.isValid()) return;
-            const w = Math.max(40, nm.length * 7 + 12);
-            group.addLayer(L.marker(b.getCenter(), {
-              pane: 'itpBoundaryPane', interactive: false,
-              icon: L.divIcon({
-                className: '',
-                html: `<div style="display:inline-block;padding:2px 8px;border-radius:10px;
-                  background:rgba(10,14,24,0.55);border:1px solid ${BOUNDARY_COLORS[LEVEL_META[lvl].key]}90;
-                  font-family:system-ui,sans-serif;font-size:10.5px;font-weight:800;letter-spacing:.03em;
-                  color:#fff;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,0.9);pointer-events:none">${nm}</div>`,
-                iconSize: [w, 18], iconAnchor: [w / 2, 9],
-              }),
-            }));
+            const c = L.geoJSON(f).getBounds().getCenter();
+            const dot = L.circleMarker(c, {
+              pane: 'itpMarkerPane', radius: 5, color: '#ffffff', weight: 1.5,
+              fillColor: color, fillOpacity: 0.95,
+            } as Parameters<typeof L.circleMarker>[1]);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            dot.on('click', (e: any) => {
+              L.DomEvent.stop(e);
+              selectFnRef.current?.({ level: 'station', name: nm, props: f.properties ?? {} });
+            });
+            group.addLayer(dot);
+            if (nm) group.addLayer(labelMarker(c, nm, color, -9)); // label sits below the dot
           } catch { /* skip malformed feature */ }
         });
       }
@@ -242,9 +306,9 @@ export default function ITPView() {
       buildMarkers();
       const sel = selectedRef.current;
       if (sel) {
-        const layer = layerByName.get(sel.name);
-        if (layer) {
-          const b = layer.getBounds?.();
+        const entry = layerByKey.get(`${sel.level}:${sel.name}`);
+        if (entry) {
+          const b = entry.layer.getBounds?.();
           if (b?.isValid()) {
             map.flyToBounds(b, {
               paddingTopLeft: [290, 30], paddingBottomRight: [30, 30],
@@ -307,7 +371,7 @@ export default function ITPView() {
         </div>
 
         <ITPBanner data={data} />
-        <ITPFilterBar categories={data?.categories ?? []} value={filters} onChange={handleCommand} level={level} onLevelChange={handleLevel} />
+        <ITPFilterBar categories={data?.categories ?? []} value={filters} onChange={handleCommand} />
 
         <div style={{ padding: '14px 20px', flexShrink: 0 }}>
           <ITPKPIs view={view} />
@@ -344,6 +408,9 @@ export default function ITPView() {
         <div style={{ flex: 1, minHeight: 0, padding: '14px 20px', position: 'relative' }}>
           <div style={{ position: 'absolute', inset: '14px 20px', display: activeTab === 'map' ? 'block' : 'none' }}>
             <ExecMapShell boundary={boundary} onMapReady={onMapReady} popupClassName="itp-popup">
+              {/* Map-layer toggles — top-right */}
+              <ITPLayerToggle isDark={theme === 'dark'} layers={layers} onToggle={handleLayerToggle} />
+
               {/* Command-level legend (doubles as a filter) */}
               <ITPLegend
                 isDark={theme === 'dark'}
@@ -374,6 +441,57 @@ export default function ITPView() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Floating map-layer toggles (top-right of the map) ─────────────────────────
+function ITPLayerToggle({
+  isDark, layers, onToggle,
+}: {
+  isDark: boolean;
+  layers: Record<ITPLayerKey, boolean>;
+  onToggle: (key: ITPLayerKey) => void;
+}) {
+  const bg = isDark ? 'rgba(15,23,42,0.90)' : 'rgba(255,255,255,0.95)';
+  const border = isDark ? 'rgba(255,255,255,0.10)' : '#dfe3ec';
+  const tc = isDark ? '#e2e8f0' : '#1e293b';
+  const mc = isDark ? '#64748b' : '#6b7280';
+
+  return (
+    <div style={{
+      position: 'absolute', top: 10, right: 10, zIndex: 700,
+      background: bg, border: `1px solid ${border}`, borderRadius: 10,
+      padding: '10px 12px', boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+      backdropFilter: 'blur(8px)', minWidth: 168,
+      fontFamily: 'system-ui, sans-serif',
+    }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: mc, marginBottom: 7 }}>
+        Map Layers
+      </div>
+      {LAYER_ORDER.map(key => {
+        const on = layers[key];
+        const color = BOUNDARY_COLORS[LAYER_META[key].colorKey];
+        const isPoint = key === 'stationPoints';
+        return (
+          <label key={key} style={{
+            display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4,
+            padding: '2px 2px', cursor: 'pointer', userSelect: 'none',
+            opacity: on ? 1 : 0.5, transition: 'opacity 140ms',
+          }}>
+            <input
+              type="checkbox"
+              checked={on}
+              onChange={() => onToggle(key)}
+              style={{ accentColor: color, width: 13, height: 13, cursor: 'pointer', flexShrink: 0 }}
+            />
+            {isPoint
+              ? <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, flexShrink: 0, border: '1.5px solid #fff', boxShadow: `0 0 4px ${color}80` }} />
+              : <svg width="20" height="8" style={{ flexShrink: 0 }}><line x1="0" y1="4" x2="20" y2="4" stroke={color} strokeWidth="2.4" strokeLinecap="round" /></svg>}
+            <span style={{ fontSize: 11.5, fontWeight: 600, color: tc, whiteSpace: 'nowrap' }}>{LAYER_META[key].label}</span>
+          </label>
+        );
+      })}
     </div>
   );
 }

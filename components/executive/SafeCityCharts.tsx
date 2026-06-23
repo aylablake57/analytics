@@ -1,5 +1,5 @@
 'use client';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -9,10 +9,16 @@ import {
   TYPE_KEYS, TYPE_META, DIR_LABELS, areaColor,
   type Direction, type SafeCityFilters, type SafeCityViewData,
 } from '@/lib/executive/safecityUtils';
+import {
+  LEVEL_META, LEVEL_ORDER,
+  type JurisdictionCoverage, type PoliceLevel,
+} from '@/lib/executive/itpUtils';
 
 interface Props {
-  view:    SafeCityViewData;
-  filters: SafeCityFilters;
+  view:      SafeCityViewData;
+  filters:   SafeCityFilters;
+  // Bridge analytic from the ITP dashboard — cameras per police jurisdiction.
+  coverage?: Record<PoliceLevel, JurisdictionCoverage>;
 }
 
 // ── Theme-aware tooltips ─────────────────────────────────────────────────────
@@ -73,7 +79,8 @@ function Panel({
 }
 
 // ── Main analytics tab ───────────────────────────────────────────────────────
-export default function SafeCityCharts({ view, filters }: Props) {
+export default function SafeCityCharts({ view, filters, coverage }: Props) {
+  const [covLevel, setCovLevel] = useState<PoliceLevel>('division');
   const scopeLabel = [
     filters.area === 'all' ? null : filters.area === 'outside' ? 'Outside Sectors' : `${filters.area} Sectors`,
     filters.type === 'all' ? null : TYPE_META[filters.type].label,
@@ -107,6 +114,12 @@ export default function SafeCityCharts({ view, filters }: Props) {
   );
 
   const maxSite = Math.max(1, ...view.topSites.map(s => s.count));
+
+  const cov = coverage?.[covLevel];
+  const covData = useMemo(
+    () => (cov?.rows ?? []).map((r, i) => ({ name: r.name, cameras: r.count, color: areaColor(i) })),
+    [cov],
+  );
 
   return (
     <motion.div
@@ -227,6 +240,55 @@ export default function SafeCityCharts({ view, filters }: Props) {
           </div>
         </Panel>
       </div>
+
+      {/* Row 4 — bridge: CCTV coverage by police jurisdiction (ITP dataset) */}
+      {coverage && cov && (
+        <div style={{ flexShrink: 0 }}>
+          <Panel eyebrow="🛡 Bridge · ITP Police Jurisdictions" title="CCTV Coverage by Police Jurisdiction" minHeight={320}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, padding: '0 4px 8px' }}>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {LEVEL_ORDER.map(l => {
+                  const active = covLevel === l;
+                  return (
+                    <button
+                      key={l}
+                      onClick={() => setCovLevel(l)}
+                      style={{
+                        padding: '3px 10px', borderRadius: 20, border: 'none', cursor: 'pointer',
+                        fontSize: '0.66rem', fontWeight: 700, fontFamily: 'inherit',
+                        background: active ? 'var(--accent-tint)' : 'transparent',
+                        color: active ? 'var(--accent)' : 'var(--text-2)',
+                        outline: active ? '1px solid var(--accent)' : '1px solid transparent',
+                      }}
+                    >
+                      {LEVEL_META[l].plural}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ fontSize: '0.66rem', color: 'var(--text-2)' }}>
+                <b style={{ color: 'var(--text-1)' }}>{cov.covered.toLocaleString()}</b> / {cov.total.toLocaleString()} cameras inside
+                {' '}({((cov.covered / (cov.total || 1)) * 100).toFixed(1)}%) ·{' '}
+                <b style={{ color: '#fb7185' }}>{cov.outside.toLocaleString()}</b> outside jurisdictions
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={232}>
+              <BarChart data={covData} margin={{ top: 6, right: 12, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'var(--text-3)' }} axisLine={{ stroke: 'var(--border)' }} tickLine={false} interval={0} angle={-30} textAnchor="end" height={72} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--text-3)' }} axisLine={false} tickLine={false} width={40} allowDecimals={false} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: 'var(--accent-tint)' }} />
+                <Bar dataKey="cameras" name="cameras" radius={[5, 5, 0, 0]} maxBarSize={46}>
+                  {covData.map((d, i) => <Cell key={`${d.name}-${i}`} fill={d.color} fillOpacity={0.85} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            <div style={{ fontSize: '0.6rem', color: 'var(--text-3)', fontFamily: 'var(--font-mono)', textAlign: 'center', paddingTop: 4 }}>
+              Computed across all {cov.total.toLocaleString()} cameras (unfiltered) · police boundaries from the ITP dataset
+            </div>
+          </Panel>
+        </div>
+      )}
 
       {/* Source footnote */}
       <div style={{

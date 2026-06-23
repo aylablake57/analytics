@@ -170,6 +170,63 @@ export async function loadITPData(): Promise<ITPData> {
   return { facilities, categories, levels };
 }
 
+// ── Cross-dashboard bridge: coverage of arbitrary points by police jurisdiction
+// Used by the Safe City dashboard to compute "CCTV cameras per police Division /
+// Circle / Station" — the one analytic both dashboards genuinely share. Loads +
+// reprojects the (cached) police boundary files and counts how many of the given
+// points fall inside each feature at each hierarchy level. Generic on points, so
+// any point dataset (cameras, facilities, incidents) can be measured this way.
+export interface CoverageRow {
+  name: string;
+  count: number;
+  props: Record<string, unknown>;
+}
+export interface JurisdictionCoverage {
+  level: PoliceLevel;
+  rows: CoverageRow[];   // sorted desc by count
+  total: number;         // points tested
+  covered: number;       // points inside ≥1 feature at this level
+  outside: number;       // total − covered
+}
+
+export async function coverageByPoliceJurisdiction(
+  points: { lng: number; lat: number }[],
+): Promise<Record<PoliceLevel, JurisdictionCoverage>> {
+  const geos = await Promise.all(
+    LEVEL_ORDER.map(l => loadBoundaryGeo(LEVEL_META[l].key, POLICE_BOUNDARY_DEFS)),
+  );
+  const result = {} as Record<PoliceLevel, JurisdictionCoverage>;
+
+  LEVEL_ORDER.forEach((level, idx) => {
+    const nameProp = LEVEL_META[level].nameProp;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const feats = ((geos[idx]?.features ?? []) as any[]).map(f => ({
+      name: String(f?.properties?.[nameProp] ?? '').trim(),
+      props: (f?.properties ?? {}) as Record<string, unknown>,
+      prepared: prepareBoundary({ type: 'FeatureCollection', features: [f] }),
+      count: 0,
+    }));
+
+    let covered = 0;
+    for (const p of points) {
+      for (const ft of feats) {
+        if (isPointInBoundary(p.lng, p.lat, ft.prepared)) { ft.count++; covered++; break; }
+      }
+    }
+
+    result[level] = {
+      level,
+      rows: feats.map(({ name, count, props }) => ({ name, count, props }))
+        .sort((a, b) => b.count - a.count),
+      total: points.length,
+      covered,
+      outside: points.length - covered,
+    };
+  });
+
+  return result;
+}
+
 // ── Filters + derived view ─────────────────────────────────────────────────────
 export interface ITPFilters {
   command: string | 'all';   // command-level category key

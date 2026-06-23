@@ -48,7 +48,7 @@ export const BOUNDARY_COLORS = {
   // not the generic boundary dropdown). One color per hierarchy level.
   policeDivision: '#2563EB',
   policeCircle:   '#0EA5E9',
-  policeStation:  '#22D3EE',
+  policeStation:  '#F97316', // orange — police station jurisdiction boundaries
 } as const satisfies Record<BoundaryKey, string>;
 
 // ── ICT Zones (CDA 1992 Zoning Regulation) — one distinct soft color per zone,
@@ -451,9 +451,11 @@ const policeDef = (
 ): BoundaryDef => _reg({
   key, label, file, defaultOn: false, utm: true, swatch: {},
   color: () => BOUNDARY_COLORS[key],
+  // Stroke-only when shown as a generic context overlay (e.g. toggled on the
+  // Safe City map) so the data underneath stays visible. The ITP dashboard
+  // renders its own filled/selectable layers and does not use this style.
   style: () => ({
-    color: BOUNDARY_COLORS[key], weight: 2, opacity: 0.9,
-    fill: true, fillColor: BOUNDARY_COLORS[key], fillOpacity: 0.08,
+    color: BOUNDARY_COLORS[key], weight: 2.2, opacity: 0.9, fill: false,
   }),
 });
 

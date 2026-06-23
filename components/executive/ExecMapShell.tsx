@@ -8,7 +8,7 @@ import BasemapSelector from './BasemapSelector';
 import BoundaryDropdown from './BoundaryDropdown';
 import { useBoundaryLayers } from './useBoundaryLayers';
 import { createExecTileLayer } from '@/lib/map/basemaps';
-import { loadBoundaryGeo } from '@/lib/map/boundaries';
+import { loadBoundaryGeo, type BoundaryDef } from '@/lib/map/boundaries';
 
 export interface MapReadyCtx {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -26,6 +26,10 @@ export interface MapReadyCtx {
 export interface ExecMapShellProps {
   /** Created by the view so it can also read boundary.visible for its own MapLegend. */
   boundary: ReturnType<typeof useBoundaryLayers>;
+  /** Boundary defs listed in the dropdown (defaults to the common BOUNDARY_DEFS).
+   * Pass an extended list (e.g. [...BOUNDARY_DEFS, ...POLICE_BOUNDARY_DEFS]) to
+   * surface extra context overlays — must match the defs given to useBoundaryLayers. */
+  boundaryDefs?: BoundaryDef[];
   onMapReady: (ctx: MapReadyCtx) => (() => void) | void;
   preferCanvas?: boolean;
   /** CSS class applied to bindPopup calls in the view (e.g. 'iesco-popup'). */
@@ -54,6 +58,7 @@ export interface ExecMapShellProps {
  */
 export default function ExecMapShell({
   boundary,
+  boundaryDefs,
   onMapReady,
   preferCanvas = false,
   popupClassName = 'exec-popup',
@@ -273,7 +278,7 @@ export default function ExecMapShell({
         position: 'absolute', top: 10, left: 54, zIndex: 700,
         display: 'flex', alignItems: 'center', gap: 6,
       }}>
-        <BoundaryDropdown visible={boundary.visible} onToggle={boundary.toggle} />
+        <BoundaryDropdown defs={boundaryDefs} visible={boundary.visible} onToggle={boundary.toggle} />
         <BasemapSelector value={tileType} onChange={setTileType} />
         <button
           onClick={toggleFullscreen}

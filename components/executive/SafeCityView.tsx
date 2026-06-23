@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from './primitives/ThemeProvider';
 import Sidebar from './Sidebar';
@@ -13,10 +13,17 @@ import {
   TYPE_KEYS, TYPE_META, DIR_LABELS, cameraMatches, deriveView, loadSafeCityData,
   type CameraRecord, type CameraType, type SafeCityData, type SafeCityFilters,
 } from '@/lib/executive/safecityUtils';
+import { BOUNDARY_DEFS, POLICE_BOUNDARY_DEFS } from '@/lib/map/boundaries';
+import { coverageByPoliceJurisdiction, type JurisdictionCoverage, type PoliceLevel } from '@/lib/executive/itpUtils';
+
+// Police jurisdiction boundaries are offered as toggleable context overlays on
+// the Safe City map (the bridge to the ITP dashboard); the same list is given
+// to both useBoundaryLayers and ExecMapShell's dropdown so they stay in sync.
+const SAFECITY_BOUNDARY_DEFS = [...BOUNDARY_DEFS, ...POLICE_BOUNDARY_DEFS];
 
 export default function SafeCityView() {
   const { theme } = useTheme();
-  const boundary = useBoundaryLayers();
+  const boundary = useBoundaryLayers(SAFECITY_BOUNDARY_DEFS);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapInstRef  = useRef<any>(null);
@@ -31,8 +38,21 @@ export default function SafeCityView() {
   const [filters,   setFilters]   = useState<SafeCityFilters>({ type: 'all', area: 'all' });
   const [visible,   setVisible]   = useState<Record<CameraType, boolean>>({ bullet: true, dome: true, anpr: true, fr: true, other: true });
   const [activeTab, setActiveTab] = useState<'map' | 'analytics'>('map');
+  const [coverage,  setCoverage]  = useState<Record<PoliceLevel, JurisdictionCoverage> | undefined>(undefined);
 
   const view = useMemo(() => (data ? deriveView(data, filters) : undefined), [data, filters]);
+
+  // Bridge analytic: how many cameras fall inside each police jurisdiction.
+  // Computed once on the full camera set (CCTV infrastructure footprint), not
+  // per-filter — see the labelled note in SafeCityCharts.
+  useEffect(() => {
+    if (!data) return;
+    let cancelled = false;
+    coverageByPoliceJurisdiction(data.cameras.map(c => ({ lng: c.lng, lat: c.lat })))
+      .then(cov => { if (!cancelled) setCoverage(cov); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [data]);
 
   const handleFilters = (f: SafeCityFilters) => {
     filtersRef.current = f;
@@ -289,6 +309,7 @@ export default function SafeCityView() {
           }}>
             <ExecMapShell
               boundary={boundary}
+              boundaryDefs={SAFECITY_BOUNDARY_DEFS}
               onMapReady={onMapReady}
               preferCanvas
               popupClassName="safecity-popup"
@@ -353,7 +374,7 @@ export default function SafeCityView() {
           {/* Analytics tab */}
           {activeTab === 'analytics' && (
             view
-              ? <SafeCityCharts view={view} filters={filters} />
+              ? <SafeCityCharts view={view} filters={filters} coverage={coverage} />
               : (
                 <div style={{
                   position: 'absolute', inset: '14px 20px',
