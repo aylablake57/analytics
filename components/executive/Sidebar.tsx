@@ -40,7 +40,7 @@ const NAV: NavSection[] = [
       { key: 'stateland',  label: 'State Land',     icon: <FaLandmark />,       href: '/executive/state_land' },
       { key: 'sngpl',      label: 'SNGPL',           icon: <FaFire />,           href: '/executive/sngpl' },
       { key: 'safecity',   label: 'Safe City',      icon: <FaVideo />,          href: '/executive/safe_city' },
-      { key: 'itp',        label: 'ITP',            icon: <FaShieldAlt />,      href: '/executive/itp' },
+      { key: 'itp',        label: 'ICT-Police',     icon: <FaShieldAlt />,      href: '/executive/itp' },
       { key: 'encroach',   label: 'Encroachments',  icon: <FaSearchLocation />, badge: '4.2K', badgeColor: '#fb923c' },
       { key: 'dealers',    label: 'Dealer Network', icon: <FaUserSecret />,     badge: '3',   badgeColor: '#fb7185' },
       { key: 'phases',     label: 'TP-18 Phases',   icon: <FaProjectDiagram /> },
