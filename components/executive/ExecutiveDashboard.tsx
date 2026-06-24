@@ -11,9 +11,6 @@ import StatusBar from './StatusBar';
 import ExecutiveHeader from './ExecutiveHeader';
 import CommandPalette from './CommandPalette';
 import KPIHero from './KPIHero';
-import ZoneCompliance from './ZoneCompliance';
-import EncroachmentTrend from './EncroachmentTrend';
-import LegalStatusDonut from './LegalStatusDonut';
 import TP18Tracker from './TP18Tracker';
 import AlertsPanel from './AlertsPanel';
 import ActivityFeed from './ActivityFeed';
@@ -107,6 +104,7 @@ function Inner() {
                 {/* Scrollable content */}
                 <main
                     ref={scrollRef}
+                    className="overview-scope"
                     style={{
                     flex: 1,
                     overflow: 'auto',
@@ -135,9 +133,7 @@ function Inner() {
                     >
                         <HeroMap />
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
-                        <ZoneCompliance />
-                        <EncroachmentTrend />
-                        {/* <LegalStatusDonut /> */}
+                        <NaturalAssets />
                         </div>
                     </section>
 
@@ -149,14 +145,13 @@ function Inner() {
                         data-reveal-section
                         style={{
                         display: 'grid',
-                        gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr)',
+                        gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 1fr)',
                         gap: 14,
                         minHeight: 380,
                         }}
                     >
                         <AlertsPanel />
                         <ActivityFeed />
-                        <NaturalAssets />
                     </section>
 
                     <motion.footer

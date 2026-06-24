@@ -85,8 +85,7 @@ export default function ElectricityView() {
         if (!isCurrent()) return;
         const SLUM_COLOR = BOUNDARY_COLORS.slums;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let slumsLayer: any;
-        slumsLayer = L.geoJSON(geo, {
+                const slumsLayer: any = L.geoJSON(geo, {
           pane: 'sectorsPane', interactive: true,
           style: { color: SLUM_COLOR, weight: 2, opacity: 1, fillColor: SLUM_COLOR, fillOpacity: 0.5 },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

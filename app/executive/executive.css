@@ -421,3 +421,50 @@
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Overview dashboard — centralized typography scale (~+1pt)
+   All Overview font sizing lives here. `.overview-scope` is set on the Overview
+   content root (ExecutiveDashboard) and on every Modal portal root, so both the
+   in-page chrome and the portaled modals (which render outside [data-exec])
+   pick up the scale. Tune the whole dashboard from the variables below.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.overview-scope {
+  --ov-fs-eyebrow:      0.68rem;   /* was ~0.62 */
+  --ov-fs-card-title:   1.00rem;   /* was 0.88  */
+  --ov-fs-card-value:   2.30rem;   /* was 2.10  */
+  --ov-fs-card-unit:    0.86rem;   /* was 0.78  */
+  --ov-fs-card-action:  0.62rem;   /* was 0.56  */
+  --ov-fs-section:      1.02rem;   /* section/panel headings (was 0.95) */
+  --ov-fs-label:        0.80rem;   /* was ~0.72 */
+  --ov-fs-value:        0.86rem;
+  --ov-fs-chip:         0.72rem;   /* was 0.66  */
+  --ov-fs-modal-eyebrow:0.66rem;
+  --ov-fs-modal-title:  1.22rem;   /* was 1.10-1.15 */
+  --ov-fs-modal-tab:    0.84rem;
+}
+
+/* Scale the shared helper classes used across every Overview panel at once.
+   !important is used so the scale wins over the components' inline font sizes,
+   but only inside .overview-scope — other dashboards are untouched. */
+[data-exec] .overview-scope .eyebrow { font-size: var(--ov-fs-eyebrow) !important; }
+[data-exec] .overview-scope .chip    { font-size: var(--ov-fs-chip) !important; }
+[data-exec] .overview-scope .recharts-text { font-size: 12px !important; } /* was 11px */
+
+/* KPI-card role classes (used in KPIHero; plain selector so they also apply
+   inside the portaled modals which carry .overview-scope). */
+.overview-scope .ov-eyebrow     { font-size: var(--ov-fs-eyebrow) !important; }
+.overview-scope .ov-card-title  { font-size: var(--ov-fs-card-title) !important; }
+.overview-scope .ov-card-value  { font-size: var(--ov-fs-card-value) !important; }
+.overview-scope .ov-card-unit   { font-size: var(--ov-fs-card-unit) !important; }
+.overview-scope .ov-card-action { font-size: var(--ov-fs-card-action) !important; }
+.overview-scope .ov-label       { font-size: var(--ov-fs-label) !important; }
+.overview-scope .ov-value       { font-size: var(--ov-fs-value) !important; }
+
+/* Section / panel headings (CardHeader title). */
+.overview-scope .ov-section-title { font-size: var(--ov-fs-section) !important; }
+
+/* Modal chrome typography. */
+.overview-scope .ov-modal-eyebrow { font-size: var(--ov-fs-modal-eyebrow) !important; }
+.overview-scope .ov-modal-title   { font-size: var(--ov-fs-modal-title) !important; }
+.overview-scope .ov-modal-tab     { font-size: var(--ov-fs-modal-tab) !important; }

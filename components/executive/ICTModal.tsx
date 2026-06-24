@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { createPortal } from 'react-dom';
+import Modal from './primitives/Modal';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { useTheme } from './primitives/ThemeProvider';
 import {
@@ -415,9 +415,6 @@ function statusColor(pct: number) {
 export default function ICTModal({ onClose }: { onClose: () => void }) {
   const { theme } = useTheme();
   const d = theme === 'dark';
-
-  const panelBg  = d ? '#0c1120' : '#ffffff';
-  const headerBg = d ? '#111828' : '#f4f6fb';
   const tileBg   = d ? '#18243a' : '#f0f3fb';
   const border   = d ? 'rgba(255,255,255,0.09)' : 'rgba(10,15,30,0.10)';
   const text1    = d ? '#f4f7fc' : '#0a0f1e';
@@ -425,116 +422,23 @@ export default function ICTModal({ onClose }: { onClose: () => void }) {
   const text3    = d ? '#6b7390' : '#8090b0';
   const barBg    = d ? 'rgba(255,255,255,0.07)' : 'rgba(10,15,30,0.07)';
 
-  const vars = {
-    '--i-panel': panelBg, '--i-header': headerBg,
-    '--i-tile': tileBg,   '--i-bd': border,
-    '--i-t1': text1,      '--i-t2': text2, '--i-t3': text3,
-    '--i-bar': barBg,
-    fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    WebkitFontSmoothing: 'antialiased',
-  } as React.CSSProperties;
-
   const [activeTab, setActiveTab] = useState(0);
 
   if (typeof document === 'undefined') return null;
 
   const tab = TABS[activeTab];
 
-  return createPortal(
-    <div style={vars}>
-      <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        transition={{ duration: 0.22 }}
-        onClick={onClose}
-        style={{
-          position: 'fixed', inset: 0, zIndex: 9999,
-          background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(10px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
-        }}
-      >
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 18 }}
-          animate={{ opacity: 1, scale: 1,    y: 0   }}
-          exit={{   opacity: 0, scale: 0.97,  y: 8   }}
-          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          onClick={e => e.stopPropagation()}
-          style={{
-            background: panelBg, color: text1,
-            border: `1px solid ${border}`,
-            borderRadius: 20,
-            width: '100%', maxWidth: 920,
-            maxHeight: '90vh',
-            display: 'flex', flexDirection: 'column',
-            boxShadow: d
-              ? '0 40px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05)'
-              : '0 40px 100px rgba(10,15,30,0.22)',
-          }}
-        >
-          {/* ── Modal header ───────────────────────────────────────────── */}
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-            padding: '22px 28px 18px',
-            borderBottom: `1px solid ${border}`,
-            background: headerBg,
-            borderRadius: '20px 20px 0 0',
-            flexShrink: 0,
-          }}>
-            <div>
-              <div style={{
-                fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.14em',
-                textTransform: 'uppercase', color: text3, fontFamily: 'monospace', marginBottom: 5,
-              }}>
-                Islamabad Capital Territory · CDA Overview
-              </div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 700, color: text1, letterSpacing: '-0.025em' }}>
-                ICT Services Dashboard
-              </div>
-            </div>
-            <button onClick={onClose} style={{
-              width: 30, height: 30, borderRadius: 8,
-              border: `1px solid ${border}`, background: tileBg, color: text2,
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '1rem', fontFamily: 'inherit', flexShrink: 0,
-            }}>×</button>
-          </div>
-
-          {/* ── Tab bar ────────────────────────────────────────────────── */}
-          <div style={{
-            display: 'flex', gap: 2,
-            padding: '12px 24px 0',
-            borderBottom: `1px solid ${border}`,
-            background: headerBg,
-            flexShrink: 0,
-            overflowX: 'auto',
-          }}>
-            {TABS.map((t, i) => {
-              const active = i === activeTab;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => setActiveTab(i)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 7,
-                    padding: '9px 16px 10px',
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    fontSize: '0.78rem', fontWeight: active ? 600 : 500,
-                    color: active ? '#00d4ff' : text2,
-                    whiteSpace: 'nowrap',
-                    borderBottom: active ? '2px solid #00d4ff' : '2px solid transparent',
-                    marginBottom: -1,
-                    transition: 'all 180ms',
-                    fontFamily: 'inherit',
-                  }}
-                >
-                  <span style={{ fontSize: '0.82rem', filter: active ? 'drop-shadow(0 0 5px rgba(0,212,255,0.6))' : 'none' }}>
-                    {t.icon}
-                  </span>
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
-
+  return (
+    <Modal
+      title="ICT Services Dashboard"
+      eyebrow="Islamabad Capital Territory · CDA Overview"
+      onClose={onClose}
+      maxWidth={920}
+      bodyScroll={false}
+      tabs={TABS.map(t => ({ id: t.id, label: (<span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>{t.icon}{t.label}</span>) }))}
+      activeTab={tab.id}
+      onTabChange={(id) => setActiveTab(TABS.findIndex(t => t.id === id))}
+    >
           {/* ── Tab content ────────────────────────────────────────────── */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 28px 28px' }}>
             <AnimatePresence mode="wait">
@@ -662,10 +566,7 @@ export default function ICTModal({ onClose }: { onClose: () => void }) {
               </motion.div>
             </AnimatePresence>
           </div>
-        </motion.div>
-      </motion.div>
-    </div>,
-    document.body
+    </Modal>
   );
 }
 

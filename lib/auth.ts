@@ -27,8 +27,6 @@ export async function login(
   } catch {
     throw new Error('Unable to reach the server. Check your connection.');
   }
-
-  let data: Record<string, unknown>;
   const ct = res.headers.get('content-type') ?? '';
   if (!ct.includes('application/json')) {
     throw new Error(
@@ -37,7 +35,7 @@ export async function login(
         : `Server error (${res.status}). Make sure the backend is running and NEXT_PUBLIC_API_BASE_URL is set correctly.`,
     );
   }
-  data = await res.json();
+  const data: Record<string, unknown> = await res.json();
 
   if (!res.ok) {
     // DRF returns { detail: "..." } on 401

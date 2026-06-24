@@ -134,8 +134,7 @@ function buildNallahLayer(
   filters: Record<string, string | string[]>,
 ): LT.GeoJSON {
   container.clearLayers();
-  let geo: LT.GeoJSON;
-  geo = L.geoJSON(data, {
+    const geo: LT.GeoJSON = L.geoJSON(data, {
     filter(f: any) {
       const p = f.properties ?? {};
       if (filters.nallahSubSector && p.sub_Sector !== filters.nallahSubSector) return false;
@@ -193,8 +192,7 @@ function buildEncrLayer(
   filters: Record<string, string | string[]>,
 ): LT.GeoJSON {
   container.clearLayers();
-  let geo: LT.GeoJSON;
-  geo = L.geoJSON(data, {
+    const geo: LT.GeoJSON = L.geoJSON(data, {
     filter(f: any) {
       const p = f.properties ?? {};
       if (Array.isArray(filters.encrType) && filters.encrType.length > 0 && !filters.encrType.includes(p.Type)) return false;
@@ -246,8 +244,7 @@ function buildIllegalSocLayer(
   filters: Record<string, string | string[]>,
 ): LT.GeoJSON {
   container.clearLayers();
-  let geo: LT.GeoJSON;
-  geo = L.geoJSON(data, {
+    const geo: LT.GeoJSON = L.geoJSON(data, {
     filter(f: any) {
       const p = f.properties ?? {};
       if (Array.isArray(filters.illegalSocName) && filters.illegalSocName.length > 0 && !filters.illegalSocName.includes(p.Name)) return false;
@@ -321,8 +318,7 @@ function buildIllegalSlumLayer(
   filters: Record<string, string | string[]>,
 ): LT.GeoJSON {
   container.clearLayers();
-  let geo: LT.GeoJSON;
-  geo = L.geoJSON(data, {
+    const geo: LT.GeoJSON = L.geoJSON(data, {
     filter(f: any) {
       const p = f.properties ?? {};
       if (Array.isArray(filters.illegalSlumName) && filters.illegalSlumName.length > 0 && !filters.illegalSlumName.includes(p.Name)) return false;
@@ -371,8 +367,7 @@ function buildWaterBodiesLayer(
   filters: Record<string, string | string[]>,
 ): LT.GeoJSON {
   container.clearLayers();
-  let geo: LT.GeoJSON;
-  geo = L.geoJSON(data, {
+    const geo: LT.GeoJSON = L.geoJSON(data, {
     filter(f: any) {
       const p = f.properties ?? {};
       if (Array.isArray(filters.waterType) && filters.waterType.length > 0 && !filters.waterType.includes(p.Type)) return false;
@@ -442,8 +437,7 @@ function buildRoadsLayer(
   filters: Record<string, string | string[]>,
 ): LT.GeoJSON {
   container.clearLayers();
-  let geo: LT.GeoJSON;
-  geo = L.geoJSON(data, {
+    const geo: LT.GeoJSON = L.geoJSON(data, {
     filter(f: any) {
       const p = f.properties ?? {};
       if (Array.isArray(filters.roadType) && filters.roadType.length > 0 && !filters.roadType.includes(p.Type)) return false;
@@ -495,8 +489,7 @@ function buildApprovedSocLayer(
   filters: Record<string, string | string[]>,
 ): LT.GeoJSON {
   container.clearLayers();
-  let geo: LT.GeoJSON;
-  geo = L.geoJSON(data, {
+    const geo: LT.GeoJSON = L.geoJSON(data, {
     filter(f: any) {
       const p = f.properties ?? {};
       if (Array.isArray(filters.approvedSocName) && filters.approvedSocName.length > 0 && !filters.approvedSocName.includes(p.HS_Name)) return false;
@@ -549,8 +542,7 @@ function buildTehsilLayer(
   selected: string,
 ): LT.GeoJSON {
   container.clearLayers();
-  let geo: LT.GeoJSON;
-  geo = L.geoJSON(data, {
+    const geo: LT.GeoJSON = L.geoJSON(data, {
     filter(f: any) {
       const p = f.properties ?? {};
       if (filters.tehsilProvince && p.PROVINCE_N !== filters.tehsilProvince) return false;
@@ -682,8 +674,7 @@ function buildG6Layer(
   filters: Record<string, string | string[]>,
 ): LT.GeoJSON {
   container.clearLayers();
-  let geo: LT.GeoJSON;
-  geo = L.geoJSON(data, {
+    const geo: LT.GeoJSON = L.geoJSON(data, {
     filter(f: any) {
       const p = f.properties ?? {};
       if (filters.g6SubSector && p.sub_Sector !== filters.g6SubSector) return false;
@@ -765,8 +756,7 @@ function buildSectorLayer(
   onReady: (g: LT.GeoJSON) => void, mapInst: LT.Map | null,
 ) {
   container.clearLayers();
-  let geo: LT.GeoJSON;
-  geo = L.geoJSON(data as unknown as GeoJSONInput, {
+    const geo: LT.GeoJSON = L.geoJSON(data as unknown as GeoJSONInput, {
     filter(f: any) { return !districtFilter || (f.properties?.District ?? '') === districtFilter; },
     style(f: any) {
       const name = f?.properties?.Sectors ?? '';
@@ -1045,8 +1035,7 @@ export default function MapPanel({ hcMarkers, hosMarkers, indMarkers, onSelect, 
       try {
         const raw = await (await fetch('/data/DHAIR_Bdry.geojson')).json();
         const dhairReprojected = reprojectGeoJSON(raw);
-        let dhairGeo: LT.GeoJSON;
-        dhairGeo = L.geoJSON(dhairReprojected, {
+                const dhairGeo: LT.GeoJSON = L.geoJSON(dhairReprojected, {
           style: { color:'#39ff14', weight:3, opacity:1, fillColor:'#39ff14', fillOpacity:0.18, dashArray:'9, 5' },
           onEachFeature(f: any, lyr: LT.Layer) {
             const p = f.properties as DHAIRProps, path = lyr as any;
@@ -1281,7 +1270,7 @@ export default function MapPanel({ hcMarkers, hosMarkers, indMarkers, onSelect, 
     if (!L || !map) return;
     if (baseLayer.current) map.removeLayer(baseLayer.current);
     baseLayer.current = createTileLayer(L, tileType).addTo(map);
-  }, [tileType]);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tileType]);   
 
   // ── Rebuild sectors on selectedSector / districtFilter change ────────────
   useEffect(() => {

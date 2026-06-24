@@ -47,7 +47,7 @@ export function CardHeader({ eyebrow, title, action }: { eyebrow?: string; title
     }}>
       <div>
         {eyebrow && <div className="eyebrow" style={{ marginBottom: 6 }}>{eyebrow}</div>}
-        {title && <div style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-1)', letterSpacing: '-0.01em' }}>{title}</div>}
+        {title && <div className="ov-section-title" style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-1)', letterSpacing: '-0.01em' }}>{title}</div>}
       </div>
       {action}
     </div>

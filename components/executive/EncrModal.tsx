@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { createPortal } from 'react-dom';
+import { motion } from 'motion/react';
+import Modal from './primitives/Modal';
 import { useTheme } from './primitives/ThemeProvider';
 
 // ── Shared encroachment data ──────────────────────────────────────────────────
@@ -277,110 +277,42 @@ export default function EncrModal({ onClose }: { onClose: () => void }) {
   const isDark = theme === 'dark';
   const [tab, setTab] = useState<'map' | 'data'>('map');
 
-  const panelBg = isDark ? '#0c1120' : '#ffffff';
-  const headerBg = isDark ? '#111828' : '#f4f6fb';
-  const tileBg   = isDark ? '#18243a' : '#f0f3fb';
-  const border   = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(10,15,30,0.10)';
-  const text1    = isDark ? '#f4f7fc' : '#0a0f1e';
-  const text2    = isDark ? '#a4abc1' : '#4a5468';
-  const text3    = isDark ? '#6b7390' : '#8090b0';
-  const barBg    = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(10,15,30,0.07)';
-
-  const vars = {
-    '--m-t1': text1, '--m-t2': text2, '--m-t3': text3,
-    fontFamily: "Inter, -apple-system, sans-serif",
-    WebkitFontSmoothing: 'antialiased',
-  } as React.CSSProperties;
+  const tileBg = isDark ? '#18243a' : '#f0f3fb';
+  const border = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(10,15,30,0.10)';
+  const text1  = isDark ? '#f4f7fc' : '#0a0f1e';
+  const text2  = isDark ? '#a4abc1' : '#4a5468';
+  const text3  = isDark ? '#6b7390' : '#8090b0';
+  const barBg  = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(10,15,30,0.07)';
 
   const total = ENCR_SECTORS.reduce((s, x) => s + x.count, 0);
 
-  if (typeof document === 'undefined') return null;
-
-  return createPortal(
-    <div style={vars}>
-      <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        transition={{ duration: 0.22 }}
-        onClick={onClose}
-        style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-      >
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 18 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.97, y: 8 }}
-          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          onClick={e => e.stopPropagation()}
-          style={{
-            background: panelBg, color: text1,
-            border: `1px solid ${border}`,
-            borderRadius: 20, width: '100%', maxWidth: 860,
-            maxHeight: '90vh', display: 'flex', flexDirection: 'column',
-            boxShadow: isDark ? '0 40px 100px rgba(0,0,0,0.7)' : '0 40px 100px rgba(10,15,30,0.2)',
-          }}
-        >
-          {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '22px 26px 18px', borderBottom: `1px solid ${border}`, background: headerBg, borderRadius: '20px 20px 0 0', flexShrink: 0 }}>
-            <div>
-              <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: text3, fontFamily: 'monospace', marginBottom: 5 }}>
-                Encroachment Intelligence · ICT Sectors
-              </div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: text1, letterSpacing: '-0.025em' }}>
-                Sector Heatmap &amp; Data
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.6rem', color: text3, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Total</div>
-                <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#fb923c', letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>
-                  {total.toLocaleString()}
-                </div>
-              </div>
-              <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${border}`, background: tileBg, color: text2, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontFamily: 'inherit' }}>×</button>
-            </div>
+  return (
+    <Modal
+      title="Sector Heatmap & Data"
+      eyebrow="Encroachment Intelligence · ICT Sectors"
+      onClose={onClose}
+      maxWidth={860}
+      tabs={[{ id: 'map', label: '🗺  Heatmap on Map' }, { id: 'data', label: '📊  Data & Statistics' }]}
+      activeTab={tab}
+      onTabChange={(id) => setTab(id as 'map' | 'data')}
+      headerRight={
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: '0.6rem', color: text3, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Total</div>
+          <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#fb923c', letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>{total.toLocaleString()}</div>
+        </div>
+      }
+    >
+      {tab === 'map' ? (
+        <div style={{ flex: 1, padding: '16px 20px 20px', minHeight: 0 }}>
+          <div style={{ borderRadius: 12, overflow: 'hidden', border: `1px solid ${border}` }}>
+            <EncrMap isDark={isDark} />
           </div>
-
-          {/* Tab bar */}
-          <div style={{ display: 'flex', gap: 2, padding: '10px 24px 0', borderBottom: `1px solid ${border}`, background: headerBg, flexShrink: 0 }}>
-            {([
-              { id: 'map',  label: '🗺  Heatmap on Map' },
-              { id: 'data', label: '📊  Data & Statistics' },
-            ] as const).map(t => {
-              const active = tab === t.id;
-              return (
-                <button key={t.id} onClick={() => setTab(t.id)} style={{
-                  padding: '9px 18px 10px', background: 'none', border: 'none',
-                  cursor: 'pointer', fontSize: '0.8rem', fontWeight: active ? 600 : 500,
-                  color: active ? '#00d4ff' : text2,
-                  borderBottom: active ? '2px solid #00d4ff' : '2px solid transparent',
-                  marginBottom: -1, whiteSpace: 'nowrap', fontFamily: 'inherit', transition: 'all 180ms',
-                }}>
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Content */}
-          <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <AnimatePresence mode="wait">
-              {tab === 'map' ? (
-                <motion.div key="map" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
-                  style={{ flex: 1, padding: '16px 20px 20px', minHeight: 0 }}>
-                  <div style={{ borderRadius: 12, overflow: 'hidden', border: `1px solid ${border}` }}>
-                    <EncrMap isDark={isDark} />
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div key="data" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
-                  style={{ flex: 1, overflowY: 'auto', padding: '16px 24px 24px' }}>
-                  <EncrData tileBg={tileBg} border={border} text1={text1} text2={text2} text3={text3} barBg={barBg} />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </motion.div>
-      </motion.div>
-    </div>,
-    document.body
+        </div>
+      ) : (
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px 24px' }}>
+          <EncrData tileBg={tileBg} border={border} text1={text1} text2={text2} text3={text3} barBg={barBg} />
+        </div>
+      )}
+    </Modal>
   );
 }

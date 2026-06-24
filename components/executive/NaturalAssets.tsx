@@ -1,18 +1,29 @@
 'use client';
+import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { CardHeader } from './primitives/Card';
-import { NATURAL_ASSETS, FOREST_TREND, SLUMS, KPI } from '@/lib/executive/mockData';
+import { loadNaturalAssets, type AssetRow, type NaturalAssetsData } from '@/lib/executive/naturalAssetsUtils';
 import { FaTree, FaWater, FaHome } from 'react-icons/fa';
 
-const riskColor = (r: string) => r === 'High' ? '#fb7185' : r === 'Medium' ? '#fbbf24' : '#34d399';
-const statusColor = (s: string) =>
-  s === 'Protected' ? '#34d399' : s === 'Partial' ? '#fbbf24' : '#fb7185';
+const CATEGORY_COLOR: Record<AssetRow['category'], string> = {
+  Forest: '#34d399', Water: '#06b6d4', Informal: '#fb7185',
+};
 
-const lastTrend = FOREST_TREND[FOREST_TREND.length - 1].cover;
-const firstTrend = FOREST_TREND[0].cover;
-const forestDelta = ((lastTrend - firstTrend) / firstTrend * 100).toFixed(1);
+const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
 export default function NaturalAssets() {
+  const [data, setData] = useState<NaturalAssetsData | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadNaturalAssets()
+      .then(d => { if (!cancelled) setData(d); })
+      .catch(e => console.warn('NaturalAssets:', e));
+    return () => { cancelled = true; };
+  }, []);
+
+  const dash = '—';
+
   return (
     <div className="glass" style={{ padding: '0 0 16px' }}>
       <CardHeader
@@ -29,43 +40,43 @@ export default function NaturalAssets() {
           icon={<FaTree />}
           color="#34d399"
           label="Forest Cover"
-          value={`${KPI.forestSqKm}`}
+          value={data ? fmt(data.forestSqKm) : dash}
           suffix="km²"
-          sub={`${parseFloat(forestDelta) >= 0 ? '+' : ''}${forestDelta}% 5-yr`}
+          sub={data ? `${data.forestPatchCount} mapped areas` : 'loading…'}
           delay={0.3}
         />
         <SummaryTile
           icon={<FaWater />}
           color="#06b6d4"
           label="Water Bodies"
-          value={`${KPI.waterSqKm}`}
+          value={data ? fmt(data.waterSqKm) : dash}
           suffix="km²"
-          sub="3 protected"
+          sub={data ? `${data.waterCount} bodies` : 'loading…'}
           delay={0.4}
         />
         <SummaryTile
           icon={<FaHome />}
           color="#fb7185"
           label="Informal Settlements"
-          value={`${KPI.slumsCount}`}
+          value={data ? `${data.slumCount}` : dash}
           suffix="areas"
-          sub={`${SLUMS.reduce((s, x) => s + x.population, 0).toLocaleString()} residents`}
+          sub={data ? `${fmt(data.slumSqKm)} km²` : 'loading…'}
           delay={0.5}
         />
       </div>
 
       <div style={{ height: 1, background: 'var(--border)', margin: '0 18px' }} />
 
-      {/* Asset list */}
+      {/* Asset list — real named features from the GeoJSON layers */}
       <div style={{ padding: '14px 18px 4px' }}>
-        <div className="eyebrow" style={{ marginBottom: 10 }}>Protected Areas Watch</div>
+        <div className="eyebrow" style={{ marginBottom: 10 }}>Key Assets Watch</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {NATURAL_ASSETS.map((asset, i) => (
+          {(data?.watch ?? []).map((asset, i) => (
             <motion.div
-              key={asset.id}
+              key={`${asset.category}-${asset.name}-${i}`}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 + i * 0.07, duration: 0.4 }}
+              transition={{ delay: 0.1 + i * 0.07, duration: 0.4 }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '8px 10px',
@@ -76,30 +87,30 @@ export default function NaturalAssets() {
             >
               <div style={{
                 width: 8, height: 8, borderRadius: 2,
-                background: asset.type === 'Forest' ? '#34d399' : asset.type === 'Water' ? '#06b6d4' : '#a78bfa',
+                background: CATEGORY_COLOR[asset.category],
                 flexShrink: 0,
               }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '0.76rem', color: 'var(--text-1)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {asset.name}
                 </div>
-                <div style={{ fontSize: '0.62rem', color: 'var(--text-3)' }}>{asset.type} · {asset.areaSqKm} km²</div>
+                <div style={{ fontSize: '0.62rem', color: 'var(--text-3)' }}>{asset.category} · {fmt(asset.areaSqKm)} km²</div>
               </div>
-              <div className={`chip`} style={{
-                background: `${statusColor(asset.status)}15`,
-                color: statusColor(asset.status),
+              <div className="chip" style={{
+                background: `${CATEGORY_COLOR[asset.category]}15`,
+                color: CATEGORY_COLOR[asset.category],
                 fontSize: '0.6rem', padding: '1px 6px',
               }}>
-                {asset.status}
-              </div>
-              <div style={{
-                fontSize: '0.66rem', color: riskColor(asset.risk),
-                fontWeight: 600, minWidth: 38, textAlign: 'right',
-              }}>
-                {asset.risk}
+                {asset.category}
               </div>
             </motion.div>
           ))}
+          {!data && (
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-3)', padding: '6px 2px' }}>Loading assets…</div>
+          )}
+        </div>
+        <div style={{ fontSize: '0.58rem', color: 'var(--text-3)', fontFamily: 'var(--font-mono)', marginTop: 10 }}>
+          Source: Forest_ICT · WaterBodies_ICT · illegal_Slums_CDA GeoJSON
         </div>
       </div>
     </div>
