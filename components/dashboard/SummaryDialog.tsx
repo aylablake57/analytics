@@ -35,31 +35,42 @@ function fmt(n: number) {
 interface AreaRowProps {
   label: string;
   color: string;
-  sqkm: number | '—';
-  kanals: number | '—';
-  acres: number | '—';
+  sqkm: number | '—' | string;
+  kanals: number | '—' | string;
+  acres: number | '—' | string;
+  singleStatus?: boolean;
 }
 
-function AreaRow({ label, color, sqkm, kanals, acres }: AreaRowProps) {
-  const v = (x: number | '—') => x === '—' ? '—' : fmt(x);
+function AreaRow({ label, color, sqkm, kanals, acres, singleStatus = false }: AreaRowProps) {
+  const v = (x: number | '—' | string) => x === '—' ? '—' : typeof x === 'number' ? fmt(x) : x;
+  const showSingleStatus = singleStatus;
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '126px 1fr 1fr 1fr', alignItems: 'center', padding: '7px 14px', borderBottom: '1px solid #ede8f8', gap: 6 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
         <div style={{ width: 9, height: 9, borderRadius: 2, background: color, flexShrink: 0 }} />
         <span style={{ fontSize: '.82rem', fontWeight: 600, color: '#2d3748' }}>{label}</span>
       </div>
-      <div style={{ textAlign: 'right' }}>
-        <div style={{ fontSize: '.87rem', fontWeight: 700, color: '#1a202c' }}>{v(sqkm)}</div>
-        <div style={{ fontSize: '.65rem', color: '#8390a8', marginTop: 1 }}>Sq KM</div>
-      </div>
-      <div style={{ textAlign: 'right' }}>
-        <div style={{ fontSize: '.87rem', fontWeight: 700, color: '#1a202c' }}>{v(kanals)}</div>
-        <div style={{ fontSize: '.65rem', color: '#8390a8', marginTop: 1 }}>Kanals</div>
-      </div>
-      <div style={{ textAlign: 'right' }}>
-        <div style={{ fontSize: '.87rem', fontWeight: 700, color: '#1a202c' }}>{v(acres)}</div>
-        <div style={{ fontSize: '.65rem', color: '#8390a8', marginTop: 1 }}>Acres</div>
-      </div>
+      {showSingleStatus ? (
+        <div style={{ gridColumn: '2 / span 3', textAlign: 'center', padding: '4px 0' }}>
+          <div style={{ fontSize: '.87rem', fontWeight: 700, color: '#1a202c' }}>{v(sqkm)}</div>
+        </div>
+      ) : (
+        <>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '.87rem', fontWeight: 700, color: '#1a202c' }}>{v(sqkm)}</div>
+            <div style={{ fontSize: '.65rem', color: '#8390a8', marginTop: 1 }}>Sq KM</div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '.87rem', fontWeight: 700, color: '#1a202c' }}>{v(kanals)}</div>
+            <div style={{ fontSize: '.65rem', color: '#8390a8', marginTop: 1 }}>Kanals</div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '.87rem', fontWeight: 700, color: '#1a202c' }}>{v(acres)}</div>
+            <div style={{ fontSize: '.65rem', color: '#8390a8', marginTop: 1 }}>Acres</div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -187,10 +198,12 @@ export default function SummaryDialog({ panelId, open, onToggle }: Props) {
               } />
               <AreaRow label="Military Sectors (E8, E9, E10)" color="#39ff14"
                 sqkm={DATA.ownership.defence.sqkm} kanals={DATA.ownership.defence.kanals} acres={DATA.ownership.defence.acres} />
-              <AreaRow label="State Land - ICT" color="#1a46c4"
-                sqkm="—" kanals="—" acres="—" />
-              <AreaRow label="Forest Land" color="#15803d"
-                sqkm="—" kanals="—" acres="—" />
+              <AreaRow label="State Land - ICT" color="#1a46c4" singleStatus
+                sqkm="In Progress" kanals="In Progress" acres="In Progress" />
+              <AreaRow label="State Land - Surronding ICT" color="#444545"
+                sqkm="864.96" kanals="1,709,896" acres="213,737" />
+              <AreaRow label="Forest Land" color="#15803d" singleStatus
+                sqkm="In Progress" kanals="In Progress" acres="In Progress" />
               <SectionHeader title="CDA Societies" icon={
                 <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                   <path d="M2 12V6l5-4 5 4v6" />
